@@ -1,0 +1,26 @@
+Package: metero
+Title: Meta-analysis Tool for Exploring Antimicrobial Resistance Outcomes
+    Across Realms
+Version: 0.1.0
+Authors@R: 
+    person("Chaokun", "Hong", , "chaokun.hong@ndm.ox.ac.uk", role = c("aut", "cre"))
+Description: A comprehensive tool for analysis and visualization of
+    antimicrobial resistance (AMR) meta-analysis data. The package
+    implements the One Health approach, integrating human, animal, and
+    environmental AMR data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Imports:
+    dplyr,
+    ggplot2,
+    scales,
+    stats,
+    tidyr
+Depends: 
+    R (>= 3.5)
+LazyData: true
