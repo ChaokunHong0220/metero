@@ -15,7 +15,7 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
 }
 
 # Install metero
-devtools::install_github("yourusername/metero")
+devtools::install_github("ChaokunHong0220/metero")
 ```
 
 ## Main Features
