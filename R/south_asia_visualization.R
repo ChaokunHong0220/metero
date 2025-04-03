@@ -34,6 +34,23 @@ create_south_asia_map <- function(data, pathogen = NULL, antibiotic = NULL,
     stop("Package 'maps' is required for geographic visualizations")
   }
   
+  # Validate data structure
+  if (nrow(data) == 0) {
+    stop("Empty data frame provided")
+  }
+  
+  # Check for required columns
+  required_columns <- c("country")
+  if (!all(required_columns %in% names(data))) {
+    stop("Data must contain at least a 'country' column")
+  }
+  
+  # Check for resistance_rate column or alternative
+  resistance_cols <- intersect(c("resistance_rate", "rate", "resistant_pct"), names(data))
+  if (length(resistance_cols) == 0) {
+    stop("Data must contain a resistance rate column ('resistance_rate', 'rate', or 'resistant_pct')")
+  }
+  
   # Match arguments
   color_palette <- match.arg(color_palette)
   
@@ -117,18 +134,29 @@ create_south_asia_map <- function(data, pathogen = NULL, antibiotic = NULL,
   # Aggregate resistance rates by country
   resistance_data <- NULL
   if ("country" %in% names(filtered_data)) {
-    if ("resistance_rate" %in% names(filtered_data)) {
+    # Use the first available resistance rate column
+    resistance_col <- resistance_cols[1]
+    if (resistance_col %in% names(filtered_data)) {
+      # Create aggregation formula dynamically
+      formula_str <- paste(resistance_col, "~ country")
+      formula_obj <- stats::as.formula(formula_str)
+      
       resistance_data <- stats::aggregate(
-        resistance_rate ~ country, 
+        formula_obj, 
         data = filtered_data, 
         FUN = function(x) mean(x, na.rm = TRUE)
       )
+      
+      # Rename the column to standardize
+      colnames(resistance_data)[colnames(resistance_data) == resistance_col] <- "resistance_rate"
       
       # Convert to percentage
       resistance_data$resistance_pct <- resistance_data$resistance_rate * 100
       
       # Add standardized country names for map matching
       resistance_data$region_std <- tolower(resistance_data$country)
+    } else {
+      stop("Required resistance rate column not found in filtered data")
     }
   }
   
