@@ -6,7 +6,7 @@
 #'
 #' @param data A data frame containing AMR data
 #' @param by Character vector of variables to group by
-#' @param method Meta-analysis method: "fixed" or "random"
+#' @param method Meta-analysis method: "Inverse" (fixed) or "GLMM" (random)
 #' @param measure Measure type: "PLO" (proportion logit), "PAS" (proportion arcsine), 
 #'                or "PFT" (proportion Freeman-Tukey)
 #' @param min_studies Minimum number of studies required for pooling
@@ -22,10 +22,10 @@
 #' results <- calculate_pooled_rate(
 #'   data = amr_data,
 #'   by = c("pathogen", "specific_antibiotic"),
-#'   method = "random"
+#'   method = "GLMM"
 #' )
 #' }
-calculate_pooled_rate <- function(data, by = NULL, method = c("random", "fixed"),
+calculate_pooled_rate <- function(data, by = NULL, method = c("GLMM", "Inverse"),
                                  measure = c("PLO", "PAS", "PFT"), 
                                  min_studies = 2, weights = "sample_size",
                                  conf_level = 0.95) {
@@ -169,7 +169,7 @@ calculate_pooled_rate <- function(data, by = NULL, method = c("random", "fixed")
 #' Internal function to perform meta-analysis on a data frame
 #'
 #' @param data Data frame with AMR data
-#' @param method Meta-analysis method
+#' @param method Meta-analysis method: "Inverse" (fixed) or "GLMM" (random)
 #' @param measure Effect measure type
 #' @param min_studies Minimum studies required
 #' @param weights Weighting approach
@@ -207,6 +207,9 @@ perform_meta_analysis <- function(data, method, measure, min_studies, weights, c
     warning("Invalid weighting method specified. Using sample size weighting.")
   }
   
+  # Determine if we're using fixed or random effects
+  is_random <- method == "GLMM"
+  
   # Perform meta-analysis
   meta_result <- meta::metaprop(
     event = meta_data$event,
@@ -221,52 +224,107 @@ perform_meta_analysis <- function(data, method, measure, min_studies, weights, c
   # Extract and format results
   result <- list(
     meta = meta_result,
-    pooled_rate = meta_result$TE.random,
-    ci_lower = meta_result$lower.random,
-    ci_upper = meta_result$upper.random,
+    pooled_rate = if(is_random) meta_result$TE.random else meta_result$TE.fixed,
+    ci_lower = if(is_random) meta_result$lower.random else meta_result$lower.fixed,
+    ci_upper = if(is_random) meta_result$upper.random else meta_result$upper.fixed,
     i_squared = meta_result$I2,
     heterogeneity_p = meta_result$pval.Q,
     total_samples = sum(meta_data$n),
     study_count = length(unique(meta_data$study))
   )
   
-  # If fixed effects were requested, override with fixed effect results
-  if (method == "fixed") {
-    result$pooled_rate <- meta_result$TE.fixed
-    result$ci_lower <- meta_result$lower.fixed
-    result$ci_upper <- meta_result$upper.fixed
-  }
-  
   return(result)
 }
 
-#' Print method for AMR meta-analysis results
+#' Print method for AMR meta-analysis
 #'
 #' @param x An amr_meta_analysis object
 #' @param ... Additional arguments passed to print
 #' @return Invisibly returns the meta-analysis object
 #' @export
 print.amr_meta_analysis <- function(x, ...) {
-  cat("AMR Meta-Analysis Results\n")
-  cat("========================\n\n")
+  cat("Antimicrobial Resistance Meta-Analysis\n")
+  cat("======================================\n\n")
   
-  cat("Method:", x$method, "effects using", x$measure, "transformation\n\n")
+  # Print meta-analysis settings
+  cat("Settings:\n")
+  cat("  Method:", x$meta_settings$method, "\n")
+  if (!is.null(x$meta_settings$sm)) {
+    cat("  Summary measure:", x$meta_settings$sm, "\n")
+  }
+  cat("  Minimum studies:", x$meta_settings$min_studies, "\n\n")
   
-  cat("Stratification:", paste(x$by, collapse = ", "), "\n\n")
+  # Print summary results
+  cat("Summary Results:\n")
   
-  cat("Summary of Pooled Estimates:\n")
+  print_df <- as.data.frame(x$summary)
+  if (nrow(print_df) > 0) {
+    # Rename columns for better display
+    ci_names <- c("ci_lower", "ci_upper")
+    for (col in ci_names) {
+      if (col %in% names(print_df)) {
+        print_df[[col]] <- sprintf("%.2f", print_df[[col]] * 100)
+      }
+    }
+    
+    if ("pooled_rate" %in% names(print_df)) {
+      print_df$pooled_rate <- sprintf("%.2f%%", print_df$pooled_rate * 100)
+    }
+    
+    if (all(ci_names %in% names(print_df))) {
+      print_df$CI <- paste0(print_df$ci_lower, "% - ", print_df$ci_upper, "%")
+      print_df <- print_df[, !names(print_df) %in% ci_names]
+    }
+    
+    if ("i_squared" %in% names(print_df)) {
+      print_df$i_squared <- sprintf("%.1f%%", print_df$i_squared)
+    }
+    
+    # Rename columns for display
+    if ("pooled_rate" %in% names(print_df)) {
+      names(print_df)[names(print_df) == "pooled_rate"] <- "Rate"
+    }
+    if ("studies" %in% names(print_df)) {
+      names(print_df)[names(print_df) == "studies"] <- "Studies"
+    }
+    if ("total_samples" %in% names(print_df)) {
+      names(print_df)[names(print_df) == "total_samples"] <- "Samples"
+    }
+    
+    # Convert I-squared column name
+    names(print_df) <- gsub("i_squared", "I2", names(print_df))
+    
+    # Print summary table
+    names(print_df) <- c(x$by, "Studies", "Samples", "Rate", "95% CI", "I2")
+    print(print_df, row.names = FALSE)
+  } else {
+    cat("  No results found.\n")
+  }
   
-  # Format data frame for nice printing
-  summary_df <- x$summary
-  summary_df$pooled_rate <- sprintf("%.4f", summary_df$pooled_rate)
-  summary_df$ci <- sprintf("(%.4f-%.4f)", summary_df$ci_lower, summary_df$ci_upper)
-  summary_df$i_squared <- sprintf("%.1f%%", summary_df$i_squared)
+  # Print overall heterogeneity if present
+  if (!is.null(x$overall) && "summary" %in% names(x$overall)) {
+    cat("\nOverall Heterogeneity:\n")
+    cat("I2 =", sprintf("%.1f%%", x$overall$summary$i_squared[1]), "\n")
+    if ("heterogeneity_p" %in% names(x$overall$summary)) {
+      cat("Heterogeneity p-value =", sprintf("%.4f", x$overall$summary$heterogeneity_p[1]), "\n")
+    }
+  }
   
-  # Select and rename columns for printing
-  print_df <- summary_df[, c(x$by, "studies", "total_samples", "pooled_rate", "ci", "i_squared")]
-  names(print_df) <- c(x$by, "Studies", "Samples", "Rate", "95% CI", "I²")
-  
-  print(print_df, row.names = FALSE)
+  # Print moderator info if present
+  if (!is.null(x$meta_regression)) {
+    cat("\nModerator Analysis:\n")
+    cat("  Moderators:", paste(x$moderators, collapse = ", "), "\n")
+    
+    if (all(c("r_squared", "p_value") %in% names(x$meta_regression))) {
+      cat("R2 =", sprintf("%.2f", x$meta_regression$r_squared), "\n")
+      cat("p-value =", sprintf("%.4f", x$meta_regression$p_value), "\n")
+    }
+    
+    if ("coef_summary" %in% names(x$meta_regression)) {
+      cat("\nCoefficients:\n")
+      print(x$meta_regression$coef_summary)
+    }
+  }
   
   invisible(x)
 }
@@ -279,7 +337,7 @@ print.amr_meta_analysis <- function(x, ...) {
 #' @param data A data frame containing AMR data
 #' @param by Character vector of variables to group by
 #' @param moderators Character vector of potential moderator variables
-#' @param method Meta-analysis method: "fixed" or "random"
+#' @param method Meta-analysis method: "Inverse" (fixed) or "GLMM" (random)
 #' @param measure Measure type: "PLO", "PAS", or "PFT"
 #'
 #' @return A list with heterogeneity analysis results
@@ -295,7 +353,7 @@ print.amr_meta_analysis <- function(x, ...) {
 #' )
 #' }
 analyze_heterogeneity <- function(data, by = NULL, moderators = NULL,
-                                method = c("random", "fixed"),
+                                method = c("GLMM", "Inverse"),
                                 measure = c("PLO", "PAS", "PFT")) {
   # Input validation
   if (!is.data.frame(data)) {
@@ -332,11 +390,14 @@ analyze_heterogeneity <- function(data, by = NULL, moderators = NULL,
   result <- list(
     by = by,
     moderators = moderators,
-    method = method,
-    measure = measure,
+    meta_settings = list(
+      method = method,
+      sm = measure,
+      min_studies = 2
+    ),
     overall = NULL,
     subgroups = NULL,
-    meta_regression = NULL
+    moderator_tests = NULL
   )
   
   # Perform overall heterogeneity analysis
@@ -523,49 +584,86 @@ prepare_meta_data <- function(data, by) {
 #' @return Invisibly returns the heterogeneity analysis object
 #' @export
 print.amr_heterogeneity <- function(x, ...) {
-  cat("AMR Heterogeneity Analysis\n")
-  cat("==========================\n\n")
+  cat("Antimicrobial Resistance Heterogeneity Analysis\n")
+  cat("=============================================\n\n")
   
-  cat("Method:", x$method, "effects using", x$measure, "transformation\n\n")
+  # Print analysis settings
+  cat("Settings:\n")
+  cat("  Method:", x$meta_settings$method, "\n")
+  if (!is.null(x$meta_settings$sm)) {
+    cat("  Summary measure:", x$meta_settings$sm, "\n")
+  }
+  cat("  Moderators:", paste(x$moderators, collapse = ", "), "\n\n")
   
   # Print overall results
-  cat("Overall heterogeneity:\n")
-  cat("I² =", sprintf("%.1f%%", x$overall$summary$i_squared[1]), "\n")
-  cat("Heterogeneity p-value =", sprintf("%.4f", x$overall$summary$heterogeneity_p[1]), "\n\n")
+  cat("Overall Heterogeneity:\n")
+  if (!is.null(x$overall) && "summary" %in% names(x$overall)) {
+    print_df <- as.data.frame(x$overall$summary)
+    if ("pooled_rate" %in% names(print_df)) {
+      print_df$pooled_rate <- sprintf("%.2f%%", print_df$pooled_rate * 100)
+      names(print_df)[names(print_df) == "pooled_rate"] <- "Rate"
+    }
+    if ("i_squared" %in% names(print_df)) {
+      print_df$i_squared <- sprintf("%.1f%%", print_df$i_squared)
+      names(print_df) <- gsub("i_squared", "I2", names(print_df))
+    }
+    if ("heterogeneity_p" %in% names(print_df)) {
+      names(print_df)[names(print_df) == "heterogeneity_p"] <- "Het. p-value"
+    }
+    print(print_df, row.names = FALSE)
+  } else {
+    cat("  No overall results available.\n")
+  }
   
-  # Print subgroup analyses
+  # Print subgroup results if available
   if (!is.null(x$subgroups) && length(x$subgroups) > 0) {
-    cat("Subgroup Analyses:\n")
+    cat("\nSubgroup Analysis:\n")
     
-    for (mod_name in names(x$subgroups)) {
-      mod <- x$subgroups[[mod_name]]
-      cat("\nModerator:", mod$moderator, "\n")
-      cat("Between-group heterogeneity: Q =", sprintf("%.2f", mod$q_between), 
-          ", p =", sprintf("%.4f", mod$p_between), "\n")
+    for (mod in names(x$subgroups)) {
+      cat("\nModerator:", mod, "\n")
       
-      # Print subgroup statistics
-      subgroup_df <- mod$stats
-      subgroup_df$ci <- sprintf("(%.4f-%.4f)", subgroup_df$ci_lower, subgroup_df$ci_upper)
-      print_df <- subgroup_df[, c("level", "studies", "pooled_rate", "ci")]
-      names(print_df) <- c("Level", "Studies", "Rate", "95% CI")
-      print(print_df, row.names = FALSE)
+      if ("summary" %in% names(x$subgroups[[mod]])) {
+        print_df <- as.data.frame(x$subgroups[[mod]]$summary)
+        
+        # Format columns for better display
+        if ("pooled_rate" %in% names(print_df)) {
+          print_df$pooled_rate <- sprintf("%.2f%%", print_df$pooled_rate * 100)
+          names(print_df)[names(print_df) == "pooled_rate"] <- "Rate"
+        }
+        
+        if ("i_squared" %in% names(print_df)) {
+          print_df$i_squared <- sprintf("%.1f%%", print_df$i_squared)
+          names(print_df) <- gsub("i_squared", "I2", names(print_df))
+        }
+        
+        print(print_df, row.names = FALSE)
+      }
     }
   }
   
-  # Print meta-regression results
-  if (!is.null(x$meta_regression)) {
-    cat("\nMeta-Regression Results:\n")
-    cat("R² =", sprintf("%.2f", x$meta_regression$r_squared), "\n")
-    cat("Model test:", x$meta_regression$test, "=", sprintf("%.2f", x$meta_regression$q_model), 
-        ", p =", sprintf("%.4f", x$meta_regression$p_model), "\n\n")
+  # Print moderator test results
+  if (!is.null(x$moderator_tests) && length(x$moderator_tests) > 0) {
+    cat("\nModerator Significance Tests:\n")
     
-    # Print coefficients
-    coef_df <- x$meta_regression$coefficients
-    coef_df$ci <- sprintf("(%.4f-%.4f)", coef_df$ci_lower, coef_df$ci_upper)
-    coef_df$p_value <- ifelse(coef_df$p_value < 0.001, "<0.001", sprintf("%.4f", coef_df$p_value))
-    print_df <- coef_df[, c("moderator", "estimate", "std_error", "ci", "p_value")]
-    names(print_df) <- c("Term", "Estimate", "Std.Error", "95% CI", "p-value")
-    print(print_df, row.names = FALSE)
+    for (mod in names(x$moderator_tests)) {
+      cat("\n  Moderator:", mod, "\n")
+      test_result <- x$moderator_tests[[mod]]
+      
+      if (is.list(test_result)) {
+        if ("Q_between" %in% names(test_result)) {
+          cat("    Q between =", sprintf("%.2f", test_result$Q_between), "\n")
+        }
+        if ("df" %in% names(test_result)) {
+          cat("    df =", test_result$df, "\n")
+        }
+        if ("p_value" %in% names(test_result)) {
+          cat("    p-value =", sprintf("%.4f", test_result$p_value), "\n")
+        }
+        if ("r_squared" %in% names(test_result)) {
+          cat("    R2 =", sprintf("%.2f", test_result$r_squared), "\n")
+        }
+      }
+    }
   }
   
   invisible(x)

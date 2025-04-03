@@ -7,7 +7,7 @@
 calculate_pooled_rate(
   data,
   by = NULL,
-  method = c("random", "fixed"),
+  method = c("GLMM", "Inverse"),
   measure = c("PLO", "PAS", "PFT"),
   min_studies = 2,
   weights = "sample_size",
@@ -19,7 +19,7 @@ calculate_pooled_rate(
 
 \item{by}{Character vector of variables to group by}
 
-\item{method}{Meta-analysis method: "fixed" or "random"}
+\item{method}{Meta-analysis method: "Inverse" (fixed) or "GLMM" (random)}
 
 \item{measure}{Measure type: "PLO" (proportion logit), "PAS" (proportion arcsine),
 or "PFT" (proportion Freeman-Tukey)}
@@ -44,7 +44,7 @@ meta-analytic methods.
 results <- calculate_pooled_rate(
   data = amr_data,
   by = c("pathogen", "specific_antibiotic"),
-  method = "random"
+  method = "GLMM"
 )
 }
 }

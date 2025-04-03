@@ -8,7 +8,7 @@ analyze_heterogeneity(
   data,
   by = NULL,
   moderators = NULL,
-  method = c("random", "fixed"),
+  method = c("GLMM", "Inverse"),
   measure = c("PLO", "PAS", "PFT")
 )
 }
@@ -19,7 +19,7 @@ analyze_heterogeneity(
 
 \item{moderators}{Character vector of potential moderator variables}
 
-\item{method}{Meta-analysis method: "fixed" or "random"}
+\item{method}{Meta-analysis method: "Inverse" (fixed) or "GLMM" (random)}
 
 \item{measure}{Measure type: "PLO", "PAS", or "PFT"}
 }

@@ -133,9 +133,13 @@ import_amr_data <- function(file_path = NULL, data = NULL, file_type = NULL, she
                            "environment" = model$environment_schema)
     
     # Apply standardization
-    imported_data <- standardize_amr_data(imported_data, mapping, domain = domain, 
-                                 domain_schema = domain_schema,
-                                 validate = validate)
+    imported_data <- standardize_amr_data(
+      data = imported_data, 
+      mapping = mapping, 
+      validate = validate,
+      domain = domain, 
+      domain_schema = domain_schema
+    )
   }
   
   return(imported_data)
@@ -379,7 +383,7 @@ print.amr_quality_assessment <- function(x, ...) {
   required_present <- x$completeness$present[x$completeness$required]
   
   for (i in seq_along(required_fields)) {
-    status <- if (required_present[i]) "✓" else "✗"
+    status <- if (required_present[i]) "[OK]" else "[MISSING]"
     cat(sprintf("  %s %s\n", status, required_fields[i]))
   }
   
@@ -421,9 +425,9 @@ print.amr_quality_assessment <- function(x, ...) {
 #'
 #' @param data A data frame containing AMR data
 #' @param mapping A named list mapping user's column names to standard names
+#' @param validate Logical; whether to validate the data structure (default: TRUE)
 #' @param domain Domain of the data: "human", "animal", "environment"
 #' @param domain_schema Optional domain-specific schema
-#' @param validate Logical; whether to validate the data structure (default: TRUE)
 #' @param standardize_categorical Logical; whether to standardize categorical variables
 #'
 #' @return A data frame with standardized variable names and structure
@@ -448,8 +452,9 @@ print.amr_quality_assessment <- function(x, ...) {
 #'   standardize_categorical = TRUE
 #' )
 #' }
-standardize_amr_data <- function(data, mapping, domain = c("human", "animal", "environment"),
-                                domain_schema = NULL, validate = TRUE, 
+standardize_amr_data <- function(data, mapping, validate = TRUE,
+                                domain = c("human", "animal", "environment"),
+                                domain_schema = NULL, 
                                 standardize_categorical = FALSE) {
   # Check if data is a data frame
   if (!is.data.frame(data)) {

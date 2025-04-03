@@ -12,6 +12,8 @@
 #' @param label_format Format string for cell labels (e.g., "%.1f%%")
 #' @param threshold Resistance rate threshold for color differentiation
 #' @param min_studies Minimum number of studies required to show a cell
+#' @param pathogen_col Name of the column containing pathogen information (default: "pathogen_name")
+#' @param antibiotic_col Name of the column containing antibiotic information (default: "antibiotic_name")
 #'
 #' @return A ggplot2 object with the heatmap
 #' @export
@@ -26,6 +28,13 @@
 #'   amr_data,
 #'   filter_conditions = list(country = "India")
 #' )
+#' 
+#' # Specify custom column names
+#' heatmap <- create_amr_heatmap(
+#'   amr_data,
+#'   pathogen_col = "pathogen_name",
+#'   antibiotic_col = "antibiotic_name"
+#' )
 #' }
 create_amr_heatmap <- function(data, filter_conditions = NULL, 
                               sort_pathogens = c("resistance", "alphabetical", NULL),
@@ -34,7 +43,9 @@ create_amr_heatmap <- function(data, filter_conditions = NULL,
                               na_color = "gray90", 
                               label_format = "%.1f%%",
                               threshold = 0.5,
-                              min_studies = 1) {
+                              min_studies = 1,
+                              pathogen_col = "pathogen_name",
+                              antibiotic_col = "antibiotic_name") {
   # Check dependencies
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required for visualizations")
@@ -51,8 +62,8 @@ create_amr_heatmap <- function(data, filter_conditions = NULL,
     color_palette <- match.arg(color_palette)
   }
   
-  # Check required columns
-  required_cols <- c("pathogen_name", "antibiotic_name", "resistance_rate")
+  # Check required columns - use the custom column names
+  required_cols <- c(pathogen_col, antibiotic_col, "resistance_rate")
   missing_cols <- setdiff(required_cols, names(data))
   if (length(missing_cols) > 0) {
     stop("Missing required columns: ", paste(missing_cols, collapse = ", "))
@@ -80,27 +91,28 @@ create_amr_heatmap <- function(data, filter_conditions = NULL,
     if ("study_count" %in% names(data)) {
       agg_data <- stats::aggregate(
         data[c("resistance_rate", "study_count")],
-        by = list(pathogen = data$pathogen_name, antibiotic = data$antibiotic_name),
+        by = list(pathogen = data[[pathogen_col]], antibiotic = data[[antibiotic_col]]),
         FUN = function(x) if(is.numeric(x)) mean(x) else x[1]
       )
     } else {
       # Count studies by study_id
       study_counts <- stats::aggregate(
-        study_id ~ pathogen_name + antibiotic_name,
-        data = data,
+        study_id ~ .,
+        data = data[c(pathogen_col, antibiotic_col, "study_id")],
         FUN = function(x) length(unique(x))
       )
       names(study_counts)[3] <- "study_count"
+      names(study_counts)[1:2] <- c(pathogen_col, antibiotic_col)
       
       # Merge with data
       data <- merge(data, study_counts, 
-                   by = c("pathogen_name", "antibiotic_name"),
+                   by = c(pathogen_col, antibiotic_col),
                    all.x = TRUE)
       
       # Aggregate
       agg_data <- stats::aggregate(
         data[c("resistance_rate", "study_count")],
-        by = list(pathogen = data$pathogen_name, antibiotic = data$antibiotic_name),
+        by = list(pathogen = data[[pathogen_col]], antibiotic = data[[antibiotic_col]]),
         FUN = function(x) if(is.numeric(x)) mean(x) else x[1]
       )
     }
@@ -111,8 +123,9 @@ create_amr_heatmap <- function(data, filter_conditions = NULL,
     }
   } else {
     # Simple aggregation if study counts are not available
+    agg_formula <- as.formula(paste("resistance_rate ~", pathogen_col, "+", antibiotic_col))
     agg_data <- stats::aggregate(
-      resistance_rate ~ pathogen_name + antibiotic_name,
+      agg_formula,
       data = data,
       FUN = mean
     )
@@ -163,7 +176,7 @@ create_amr_heatmap <- function(data, filter_conditions = NULL,
       # Try to extract class from antibiotic name or use antibiotic classification if available
       if ("antibiotic_class" %in% names(data)) {
         # Group by class then by mean resistance within class
-        class_data <- unique(data[c("antibiotic_name", "antibiotic_class")])
+        class_data <- unique(data[c(antibiotic_col, "antibiotic_class")])
         names(class_data) <- c("antibiotic", "class")
         
         # Merge class data with aggregated data
@@ -373,7 +386,7 @@ create_forest_plot <- function(meta_results, sort_by = c("rate", "ci_width", "i_
   # Adjust labels with additional information if requested
   if (include_heterogeneity && "i_squared" %in% names(plot_data)) {
     plot_data$label_ext <- sprintf(
-      "%s (I² = %.1f%%)", 
+      "%s (I2 = %.1f%%)", 
       plot_data$label, 
       plot_data$i_squared
     )

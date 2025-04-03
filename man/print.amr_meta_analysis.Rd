@@ -2,7 +2,7 @@
 % Please edit documentation in R/meta_analysis.R
 \name{print.amr_meta_analysis}
 \alias{print.amr_meta_analysis}
-\title{Print method for AMR meta-analysis results}
+\title{Print method for AMR meta-analysis}
 \usage{
 \method{print}{amr_meta_analysis}(x, ...)
 }
@@ -15,5 +15,5 @@
 Invisibly returns the meta-analysis object
 }
 \description{
-Print method for AMR meta-analysis results
+Print method for AMR meta-analysis
 }

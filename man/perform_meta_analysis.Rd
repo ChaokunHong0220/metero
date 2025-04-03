@@ -9,7 +9,7 @@ perform_meta_analysis(data, method, measure, min_studies, weights, conf_level)
 \arguments{
 \item{data}{Data frame with AMR data}
 
-\item{method}{Meta-analysis method}
+\item{method}{Meta-analysis method: "Inverse" (fixed) or "GLMM" (random)}
 
 \item{measure}{Effect measure type}
 

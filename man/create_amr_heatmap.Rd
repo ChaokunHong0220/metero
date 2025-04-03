@@ -13,7 +13,9 @@ create_amr_heatmap(
   na_color = "gray90",
   label_format = "\%.1f\%\%",
   threshold = 0.5,
-  min_studies = 1
+  min_studies = 1,
+  pathogen_col = "pathogen_name",
+  antibiotic_col = "antibiotic_name"
 )
 
 create_amr_heatmap(
@@ -25,7 +27,9 @@ create_amr_heatmap(
   na_color = "gray90",
   label_format = "\%.1f\%\%",
   threshold = 0.5,
-  min_studies = 1
+  min_studies = 1,
+  pathogen_col = "pathogen_name",
+  antibiotic_col = "antibiotic_name"
 )
 }
 \arguments{
@@ -46,6 +50,10 @@ create_amr_heatmap(
 \item{threshold}{Resistance rate threshold for color differentiation}
 
 \item{min_studies}{Minimum number of studies required to show a cell}
+
+\item{pathogen_col}{Name of the column containing pathogen information (default: "pathogen_name")}
+
+\item{antibiotic_col}{Name of the column containing antibiotic information (default: "antibiotic_name")}
 
 \item{pathogen_var}{Pathogen variable name, default is "pathogen_name"}
 
@@ -85,6 +93,13 @@ heatmap <- create_amr_heatmap(amr_data)
 heatmap <- create_amr_heatmap(
   amr_data,
   filter_conditions = list(country = "India")
+)
+
+# Specify custom column names
+heatmap <- create_amr_heatmap(
+  amr_data,
+  pathogen_col = "pathogen_name",
+  antibiotic_col = "antibiotic_name"
 )
 }
 }
