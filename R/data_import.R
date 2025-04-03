@@ -132,8 +132,9 @@ import_amr_data <- function(file_path = NULL, data = NULL, file_type = NULL, she
                            "animal" = model$animal_schema,
                            "environment" = model$environment_schema)
     
-    # Apply standardization
-    imported_data <- standardize_amr_data(
+    # Use the enhanced standardize_amr_data function from the current file instead of
+    # potentially using the basic one from data_standardization.R
+    imported_data <- metero:::standardize_amr_data(
       data = imported_data, 
       mapping = mapping, 
       validate = validate,
@@ -418,10 +419,11 @@ print.amr_quality_assessment <- function(x, ...) {
   invisible(x)
 }
 
-#' Enhanced standardize AMR data format
+#' Enhanced standardize AMR data format (internal function)
 #'
 #' This function extends the basic standardize_amr_data function with additional 
 #' validation and processing capabilities, including domain-specific standardization.
+#' This is an internal function used by import_amr_data.
 #'
 #' @param data A data frame containing AMR data
 #' @param mapping A named list mapping user's column names to standard names
@@ -431,21 +433,20 @@ print.amr_quality_assessment <- function(x, ...) {
 #' @param standardize_categorical Logical; whether to standardize categorical variables
 #'
 #' @return A data frame with standardized variable names and structure
-#' @export
+#'
+#' @keywords internal
 #'
 #' @examples
 #' \dontrun{
 #' # Create a mapping from your data to the standard format
 #' my_mapping <- list(
-#'   "Study ID" = "study_id",
-#'   "Bacteria" = "pathogen",
-#'   "Drug" = "specific_antibiotic",
-#'   "Total" = "sample_count",
-#'   "Resistant" = "resistant_count"
+#'   study_id = "Study_ID",
+#'   pathogen = "Bacteria", 
+#'   antibiotic = "Drug"
 #' )
-#'
-#' # Standardize your data
-#' std_data <- standardize_amr_data(
+#' 
+#' # This function is used internally by import_amr_data
+#' std_data <- import_amr_data(
 #'   my_data, 
 #'   my_mapping, 
 #'   domain = "human",
