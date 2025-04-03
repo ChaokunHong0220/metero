@@ -2,7 +2,7 @@
 
 ## Description
 
-metero (Meta-analysis Tool for Exploring Antimicrobial Resistance Outcomes Across Realms) is an R package for analyzing antimicrobial resistance (AMR) data. The package implements the One Health approach, integrating AMR data from human, animal, and environmental domains to help researchers and health workers analyze, visualize, and understand AMR distribution and trends.
+metero is an R package for analyzing antimicrobial resistance (AMR) data. The package provides tools for standardizing, analyzing, and visualizing AMR data to help researchers and public health professionals understand AMR distribution and trends globally.
 
 ## Installation
 
@@ -20,96 +20,76 @@ devtools::install_github("ChaokunHong0220/metero")
 
 ## Main Features
 
-### 1. Data Standardization and Import
+### 1. Data Import and Standardization ✅
 
-Easily import and standardize AMR data from different sources and formats:
+metero provides robust data import and standardization capabilities:
+
+- **Multiple File Format Support**: Import from CSV, Excel, or R data files
+- **Antibiotic Code Handling**: Automatic processing of antibiotic abbreviations (e.g., AML for Amoxyclav, AMP for Ampicillin)
+- **WHO AWaRe Classification**: Integration with the WHO antibiotic classification system (Access, Watch, Reserve)
+- **Wide-to-Long Format Conversion**: Process common wide-format AMR data
+  - Support for patterns like `r_AML_Ecoli` (resistance rate of E. coli to Amoxyclav)
+  - Support for count data in patterns like `n_AML_Ecoli` (total samples) and `d_AML_Ecoli` (resistant samples)
 
 ```r
-library(metero)
-
-# Example 1: Import data from a CSV file
-my_mapping <- list(
-  study_id = "Study_ID",
-  pathogen = "Bacteria",
-  specific_antibiotic = "Antibiotic",
-  sample_count = "Total",
-  resistant_count = "Resistant"
-)
-
+# Import AMR data example
 amr_data <- import_amr_data(
-  file_path = "my_amr_data.csv",
-  mapping = my_mapping,
+  "your_data.csv",
+  mapping = list(
+    pathogen = "bacteria",
+    antibiotic = "drug",
+    resistance_rate = "rate"
+  ),
   domain = "human"
 )
 
-# Example 2: Directly use an existing data frame
-my_df <- data.frame(
-  Study_ID = c("Study1", "Study1", "Study2"),
-  Bacteria = c("E. coli", "S. aureus", "K. pneumoniae"),
-  Antibiotic = c("Ciprofloxacin", "Oxacillin", "Meropenem"),
-  Total = c(100, 50, 75),
-  Resistant = c(34, 22, 12)
+# Convert wide format to long format example
+long_data <- amr_wide_to_long(
+  wide_data,
+  expand_codes = TRUE,
+  add_who_class = TRUE
 )
-
-amr_data <- import_amr_data(
-  data = my_df,
-  mapping = my_mapping,
-  domain = "human"
-)
-
-# Check data quality
-quality_report <- check_data_quality(amr_data)
-print(quality_report)
-
-# Alternative: Import and check quality in one step
-import_result <- import_local_data(
-  data = my_df,
-  mapping = my_mapping,
-  domain = "human"
-)
-amr_data <- import_result$data
-quality_report <- import_result$quality_assessment
 ```
 
-### 2. AMR Data Analysis
+### 2. Interactive Exploration via Shiny Application ✅
 
-Perform meta-analysis and trend analysis on AMR data:
+metero includes a full-featured Shiny application for interactive data exploration:
+
+- **Data Import Interface**: Upload and configure your AMR data
+- **Visualization Dashboard**: Generate and customize visualizations
+- **Interactive Mapping**: Create geographical visualizations of AMR patterns
+- **Analysis Tools**: Perform analyses within the application
 
 ```r
-# Calculate pooled resistance rates by pathogen and antibiotic
+# Launch the Shiny application
+launch_metero()
+
+# Launch with pre-loaded data
+data <- import_amr_data("my_amr_data.csv")
+launch_metero(data = data)
+```
+
+### 3. AMR Data Analysis ⚠️ (Under Development)
+
+Meta-analysis and trend analysis features for AMR data:
+
+```r
+# Calculate pooled resistance rates
 meta_results <- calculate_pooled_rate(
   data = amr_data,
   by = c("pathogen", "specific_antibiotic"),
   method = "random"
 )
 
-# Print results
-print(meta_results)
-
-# Analyze heterogeneity with country as a moderator
+# Analyze heterogeneity
 heterogeneity <- analyze_heterogeneity(
   data = amr_data,
   by = c("pathogen", "specific_antibiotic"),
   moderators = c("country")
 )
-
-# Perform subgroup analysis
-subgroup_results <- perform_subgroup_analysis(
-  data = amr_data,
-  by = c("pathogen", "specific_antibiotic"),
-  subgroups = c("setting")
-)
-
-# Analyze time trends
-trend_analysis <- analyze_amr_trends(
-  data = amr_data,
-  time_var = "year",
-  group_vars = c("pathogen", "antibiotic_class"),
-  smooth_method = "loess"
-)
 ```
 
-### 3. Visualization
+### 4. Advanced Visualization ⚠️ (Under Development)
 
 Create informative visualizations to understand AMR patterns:
 
@@ -120,11 +100,6 @@ heatmap <- create_amr_heatmap(
   sort_pathogens = "resistance",
   sort_antibiotics = "class"
 )
-print(heatmap)
-
-# Create a forest plot from meta-analysis results
-forest <- create_forest_plot(meta_results)
-print(forest)
 
 # Create a geographic map of AMR data
 map <- create_geo_map(
@@ -132,115 +107,37 @@ map <- create_geo_map(
   pathogen = "Escherichia coli",
   antibiotic = "Ciprofloxacin"
 )
-print(map)
-
-# Create a time trend plot
-trend_plot <- create_trend_plot(
-  data = amr_data,
-  time_var = "year",
-  group_vars = c("pathogen_name")
-)
-print(trend_plot)
 ```
 
-### 4. Integrated Analysis Example
+### 5. One Health Integration ⚠️ (Under Development)
 
-Complete workflow combining multiple analysis approaches:
+Future features for integrating human, animal, and environmental AMR data:
 
-```r
-library(metero)
-library(dplyr)
-library(ggplot2)
-
-# Load included data
-data(human_amr)
-
-# 1. Filter data for interesting combinations
-ec_data <- human_amr %>%
-  filter(pathogen == "Escherichia coli")
-
-# 2. Perform meta-analysis
-ec_meta <- calculate_pooled_rate(
-  data = ec_data,
-  by = c("specific_antibiotic"),
-  method = "random"
-)
-
-# 3. Visualize as heatmap
-ec_heatmap <- create_amr_heatmap(ec_data)
-print(ec_heatmap + labs(title = "E. coli Resistance Rates"))
-
-# 4. Analyze time trends
-ec_trends <- create_trend_plot(
-  ec_data,
-  time_var = "year",
-  group_vars = c("specific_antibiotic"),
-  smooth_method = "loess"
-)
-print(ec_trends)
-
-# 5. Analyze factors affecting resistance rates
-ec_factors <- analyze_amr_factors(
-  ec_data,
-  target_pathogen = "Escherichia coli",
-  target_antibiotic = "Ciprofloxacin",
-  predictors = c("year", "country", "setting", "population_type")
-)
-
-# Create forest plot of odds ratios
-or_plot <- ggplot2::ggplot(
-  ec_factors$result_table[-1,], 
-  ggplot2::aes(x = OR, y = Variable, xmin = CI_Lower, xmax = CI_Upper)
-) +
-  ggplot2::geom_point() +
-  ggplot2::geom_errorbarh(height = 0.2) +
-  ggplot2::geom_vline(xintercept = 1, linetype = "dashed", color = "red") +
-  ggplot2::scale_x_log10() +
-  ggplot2::labs(
-    title = "Factors Affecting E. coli Resistance to Ciprofloxacin",
-    x = "Odds Ratio (OR)",
-    y = "Variable"
-  ) +
-  ggplot2::theme_minimal()
-
-print(or_plot)
-```
+- Cross-domain analysis
+- Transmission pathway visualization
+- Integrated reporting
 
 ## Included Data
 
-The metero package includes the `human_amr` dataset containing AMR data from South Asian countries, covering 4 pathogens and 35 antibiotics.
+The metero package includes sample AMR datasets to demonstrate functionality.
 
 ```r
 # View data structure
 data(human_amr)
 str(human_amr)
 
-# View metadata
-data(metadata)
-str(metadata)
-
 # View antibiotic classification
 data(antibiotic_classification)
 head(antibiotic_classification)
-
-# View pathogen classification
-data(pathogen_classification)
-print(pathogen_classification)
 ```
 
 ## Data Model
 
-The metero package implements a standardized data model for AMR data:
+metero implements a standardized data model for AMR data:
 
 ```r
 # View the data model
 model <- get_data_model()
-
-# View the metadata schema
-head(model$metadata_schema)
-
-# View the human AMR data schema
-head(model$human_schema)
 
 # Create an empty dataset structure
 empty_dataset <- create_empty_dataset()
