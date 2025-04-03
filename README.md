@@ -40,7 +40,7 @@ Analyze factors influencing AMR and evaluate the impact of different variables o
 install.packages(c("dplyr", "ggplot2", "scales", "tidyr", "stats"))
 
 # Install development version
-devtools::install_github("username/metero")
+devtools::install_github("ChaokunHong0220/metero")
 ```
 
 ## Detailed Usage Examples
