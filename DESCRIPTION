@@ -7,20 +7,42 @@ Authors@R:
 Description: A comprehensive tool for analysis and visualization of
     antimicrobial resistance (AMR) meta-analysis data. The package
     implements the One Health approach, integrating human, animal, and
-    environmental AMR data.
+    environmental AMR data. It provides functions for data import,
+    standardization, meta-analysis, trend analysis, and interactive
+    visualization of AMR patterns across different pathogens, antibiotics,
+    geographic regions, and domains.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    readxl,
+    viridis,
+    mgcv,
+    DMwR2,
+    mice,
+    jsonlite
 Config/testthat/edition: 3
 Imports:
     dplyr,
     ggplot2,
     scales,
     stats,
-    tidyr
+    tidyr,
+    tools,
+    utils,
+    meta,
+    metafor,
+    maps,
+    httr,
+    grDevices,
+    methods
 Depends: 
     R (>= 3.5)
 LazyData: true
+VignetteBuilder: knitr
+URL: https://github.com/yourusername/metero
+BugReports: https://github.com/yourusername/metero/issues
