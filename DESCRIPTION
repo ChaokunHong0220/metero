@@ -39,10 +39,15 @@ Imports:
     maps,
     httr,
     grDevices,
-    methods
+    methods,
+    shiny,
+    shinydashboard,
+    DT,
+    leaflet,
+    plotly
 Depends: 
     R (>= 3.5)
 LazyData: true
 VignetteBuilder: knitr
-URL: https://github.com/yourusername/metero
-BugReports: https://github.com/yourusername/metero/issues
+URL: https://github.com/ChaokunHong0220/metero
+BugReports: https://github.com/ChaokunHong0220/metero/issues

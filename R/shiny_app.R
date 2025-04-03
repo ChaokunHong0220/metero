@@ -19,14 +19,38 @@
 #' launch_metero(data = data)
 #' }
 launch_metero <- function(data = NULL, ...) {
-  # Check for shiny package
-  if (!requireNamespace("shiny", quietly = TRUE)) {
-    stop("Package 'shiny' is required for the interactive application")
+  # The required packages should be automatically installed because 
+  # they are in the DESCRIPTION file's Imports section.
+  # But just in case, we'll provide helpful messages.
+  
+  # Check for required packages
+  missing_packages <- character(0)
+  required_packages <- c("shiny", "shinydashboard", "DT", "leaflet", "plotly")
+  
+  for (pkg in required_packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      missing_packages <- c(missing_packages, pkg)
+    }
   }
   
-  # Check for shinydashboard package
-  if (!requireNamespace("shinydashboard", quietly = TRUE)) {
-    stop("Package 'shinydashboard' is required for the interactive application")
+  # If any packages are missing, try to install them
+  if (length(missing_packages) > 0) {
+    message("Installing required packages: ", paste(missing_packages, collapse = ", "))
+    utils::install.packages(missing_packages)
+    
+    # Check again if installation succeeded
+    still_missing <- character(0)
+    for (pkg in missing_packages) {
+      if (!requireNamespace(pkg, quietly = TRUE)) {
+        still_missing <- c(still_missing, pkg)
+      }
+    }
+    
+    # If there are still missing packages, show error
+    if (length(still_missing) > 0) {
+      stop("Could not install required packages: ", paste(still_missing, collapse = ", "), 
+           "\nPlease install these packages manually with install.packages()")
+    }
   }
   
   # Save data to a temporary environment that will be accessible to the Shiny app
