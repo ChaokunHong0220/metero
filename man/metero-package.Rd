@@ -6,7 +6,7 @@
 \alias{metero-package}
 \title{metero: Meta-analysis Tool for Exploring Antimicrobial Resistance Outcomes Across Realms}
 \description{
-A comprehensive tool for analysis and visualization of antimicrobial resistance (AMR) meta-analysis data. The package implements the One Health approach, integrating human, animal, and environmental AMR data.
+A comprehensive tool for analysis and visualization of antimicrobial resistance (AMR) meta-analysis data. The package implements the One Health approach, integrating human, animal, and environmental AMR data. It provides functions for data import, standardization, meta-analysis, trend analysis, and interactive visualization of AMR patterns across different pathogens, antibiotics, geographic regions, and domains.
 
 A comprehensive tool for analysis and visualization of antimicrobial resistance (AMR)
 meta-analysis data. The package implements the One Health approach, integrating human,
@@ -32,6 +32,14 @@ animal, and environmental AMR data.
 }
 }
 
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/yourusername/metero}
+  \item Report bugs at \url{https://github.com/yourusername/metero/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Chaokun Hong \email{chaokun.hong@ndm.ox.ac.uk}
 
