@@ -19,12 +19,16 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown,
-    readxl,
     viridis,
     mgcv,
     DMwR2,
     mice,
-    jsonlite
+    jsonlite,
+    shinydashboard,
+    DT,
+    leaflet,
+    plotly,
+    readxl
 Config/testthat/edition: 3
 Imports:
     dplyr,
@@ -40,11 +44,7 @@ Imports:
     httr,
     grDevices,
     methods,
-    shiny,
-    shinydashboard,
-    DT,
-    leaflet,
-    plotly
+    shiny
 Depends: 
     R (>= 3.5)
 LazyData: true

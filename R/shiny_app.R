@@ -23,7 +23,7 @@ launch_metero <- function(data = NULL, ...) {
   # they are in the DESCRIPTION file's Imports section.
   # But just in case, we'll provide helpful messages.
   
-  # Check for required packages
+  # Check for required packages - only when function is actually called
   missing_packages <- character(0)
   required_packages <- c("shiny", "shinydashboard", "DT", "leaflet", "plotly")
   
