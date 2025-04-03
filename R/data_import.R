@@ -1,9 +1,10 @@
-#' Import AMR data from various file formats
+#' Import AMR data from various file formats or directly from a data frame
 #'
-#' Imports antimicrobial resistance data from CSV, Excel, or RData files,
+#' Imports antimicrobial resistance data from CSV, Excel, RData files, or directly from an existing data frame,
 #' and provides options for initial validation and standardization.
 #'
-#' @param file_path Path to the data file
+#' @param file_path Path to the data file, or NULL if providing a data frame directly
+#' @param data Optional data frame containing AMR data (if providing data directly)
 #' @param file_type Type of file: "csv", "excel", "rdata", or NULL for auto-detect
 #' @param sheet Sheet name or number (for Excel files)
 #' @param mapping A named list mapping source column names to standard names
@@ -18,7 +19,7 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Import CSV data with automatic standardization
+#' # Example 1: Import CSV data with automatic standardization
 #' mapping <- list(
 #'   study_id = "Study_ID",
 #'   pathogen = "Bacteria",
@@ -31,66 +32,95 @@
 #'   mapping = mapping,
 #'   domain = "human"
 #' )
+#'
+#' # Example 2: Directly use an existing data frame
+#' my_df <- data.frame(
+#'   Study_ID = c("Study1", "Study1", "Study2"),
+#'   Bacteria = c("E. coli", "S. aureus", "K. pneumoniae"),
+#'   Antibiotic = c("Ciprofloxacin", "Oxacillin", "Meropenem"),
+#'   Total = c(100, 50, 75),
+#'   Resistant = c(34, 22, 12)
+#' )
+#'
+#' processed_data <- import_amr_data(
+#'   data = my_df,
+#'   mapping = mapping,
+#'   domain = "human"
+#' )
 #' }
-import_amr_data <- function(file_path, file_type = NULL, sheet = 1, mapping = NULL, 
-                            domain = c("human", "animal", "environment"),
+import_amr_data <- function(file_path = NULL, data = NULL, file_type = NULL, sheet = 1, 
+                            mapping = NULL, domain = c("human", "animal", "environment"),
                             header = TRUE, skip = 0, validate = TRUE, ...) {
-  # Check file exists
-  if (!file.exists(file_path)) {
-    stop("File not found: ", file_path)
+  # Check if either file_path or data is provided
+  if (is.null(file_path) && is.null(data)) {
+    stop("Either 'file_path' or 'data' must be provided")
   }
   
   # Match domain argument
   domain <- match.arg(domain)
   
-  # Auto-detect file type if not specified
-  if (is.null(file_type)) {
-    file_ext <- tolower(tools::file_ext(file_path))
-    if (file_ext %in% c("csv", "txt")) {
-      file_type <- "csv"
-    } else if (file_ext %in% c("xls", "xlsx")) {
-      file_type <- "excel"
-    } else if (file_ext == "rdata" || file_ext == "rda") {
-      file_type <- "rdata"
-    } else {
-      stop("Could not automatically determine file type. Please specify file_type.")
+  # If data is directly provided, use it; otherwise import from file
+  if (!is.null(data)) {
+    if (!is.data.frame(data)) {
+      stop("If 'data' is provided, it must be a data frame")
     }
+    # Use the provided data frame
+    imported_data <- data
+  } else {
+    # Check file exists
+    if (!file.exists(file_path)) {
+      stop("File not found: ", file_path)
+    }
+    
+    # Auto-detect file type if not specified
+    if (is.null(file_type)) {
+      file_ext <- tolower(tools::file_ext(file_path))
+      if (file_ext %in% c("csv", "txt")) {
+        file_type <- "csv"
+      } else if (file_ext %in% c("xls", "xlsx")) {
+        file_type <- "excel"
+      } else if (file_ext == "rdata" || file_ext == "rda") {
+        file_type <- "rdata"
+      } else {
+        stop("Could not automatically determine file type. Please specify file_type.")
+      }
+    }
+    
+    # Import data based on file type
+    imported_data <- switch(tolower(file_type),
+                   "csv" = utils::read.csv(file_path, header = header, skip = skip, ...),
+                   "excel" = {
+                     if (!requireNamespace("readxl", quietly = TRUE)) {
+                       stop("Package 'readxl' is required to import Excel files.")
+                     }
+                     readxl::read_excel(file_path, sheet = sheet, skip = skip, ...)
+                   },
+                   "rdata" = {
+                     env <- new.env()
+                     load(file_path, envir = env)
+                     
+                     # If there's only one object in the environment, return it
+                     if (length(ls(env)) == 1) {
+                       get(ls(env)[1], envir = env)
+                     } else {
+                       # If there are multiple objects, try to find a data frame
+                       data_frames <- ls(env)[sapply(ls(env), function(x) is.data.frame(get(x, envir = env)))]
+                       if (length(data_frames) == 1) {
+                         get(data_frames[1], envir = env)
+                       } else if (length(data_frames) > 1) {
+                         stop("Multiple data frames found in RData file. Please extract the desired data frame manually.")
+                       } else {
+                         stop("No data frames found in RData file.")
+                       }
+                     }
+                   },
+                   stop("Unsupported file type: ", file_type)
+    )
   }
   
-  # Import data based on file type
-  data <- switch(tolower(file_type),
-                 "csv" = utils::read.csv(file_path, header = header, skip = skip, ...),
-                 "excel" = {
-                   if (!requireNamespace("readxl", quietly = TRUE)) {
-                     stop("Package 'readxl' is required to import Excel files.")
-                   }
-                   readxl::read_excel(file_path, sheet = sheet, skip = skip, ...)
-                 },
-                 "rdata" = {
-                   env <- new.env()
-                   load(file_path, envir = env)
-                   
-                   # If there's only one object in the environment, return it
-                   if (length(ls(env)) == 1) {
-                     get(ls(env)[1], envir = env)
-                   } else {
-                     # If there are multiple objects, try to find a data frame
-                     data_frames <- ls(env)[sapply(ls(env), function(x) is.data.frame(get(x, envir = env)))]
-                     if (length(data_frames) == 1) {
-                       get(data_frames[1], envir = env)
-                     } else if (length(data_frames) > 1) {
-                       stop("Multiple data frames found in RData file. Please extract the desired data frame manually.")
-                     } else {
-                       stop("No data frames found in RData file.")
-                     }
-                   }
-                 },
-                 stop("Unsupported file type: ", file_type)
-  )
-  
   # Ensure data is a data.frame (not a tibble or other class)
-  if (!is.data.frame(data)) {
-    data <- as.data.frame(data)
+  if (!is.data.frame(imported_data)) {
+    imported_data <- as.data.frame(imported_data)
   }
   
   # Apply mapping and standardization if provided
@@ -103,20 +133,21 @@ import_amr_data <- function(file_path, file_type = NULL, sheet = 1, mapping = NU
                            "environment" = model$environment_schema)
     
     # Apply standardization
-    data <- standardize_amr_data(data, mapping, domain = domain, 
+    imported_data <- standardize_amr_data(imported_data, mapping, domain = domain, 
                                  domain_schema = domain_schema,
                                  validate = validate)
   }
   
-  return(data)
+  return(imported_data)
 }
 
 #' Import local AMR data and provide quality assessment
 #'
-#' Imports local AMR data and performs basic quality checks, providing
-#' a report on data completeness and potential issues.
+#' Imports local AMR data (either from a file or a direct data frame) and performs 
+#' basic quality checks, providing a report on data completeness and potential issues.
 #'
-#' @param file_path Path to the data file
+#' @param file_path Path to the data file, or NULL if providing a data frame directly
+#' @param data Optional data frame containing AMR data (if providing data directly)
 #' @param file_type Type of file: "csv", "excel", "rdata", or NULL for auto-detect
 #' @param mapping A named list mapping source column names to standard names
 #' @param domain Domain of the data: "human", "animal", "environment"
@@ -127,7 +158,7 @@ import_amr_data <- function(file_path, file_type = NULL, sheet = 1, mapping = NU
 #'
 #' @examples
 #' \dontrun{
-#' # Import and assess local data quality
+#' # Example 1: Import and assess local file data quality
 #' mapping <- list(
 #'   study_id = "Study_ID",
 #'   pathogen = "Bacteria",
@@ -143,21 +174,38 @@ import_amr_data <- function(file_path, file_type = NULL, sheet = 1, mapping = NU
 #' 
 #' # View quality assessment
 #' print(result$quality_assessment)
+#' 
+#' # Example 2: Assessment with direct data input
+#' my_df <- data.frame(
+#'   Study_ID = c("Study1", "Study1", "Study2"),
+#'   Bacteria = c("E. coli", "S. aureus", "K. pneumoniae"),
+#'   Antibiotic = c("Ciprofloxacin", "Oxacillin", "Meropenem"),
+#'   Total = c(100, 50, 75),
+#'   Resistant = c(34, 22, 12)
+#' )
+#'
+#' result <- import_local_data(
+#'   data = my_df,
+#'   mapping = mapping,
+#'   domain = "human"
+#' )
 #' }
-import_local_data <- function(file_path, file_type = NULL, mapping = NULL, 
+import_local_data <- function(file_path = NULL, data = NULL, file_type = NULL, mapping = NULL, 
                              domain = c("human", "animal", "environment"), ...) {
   # Match domain argument
   domain <- match.arg(domain)
   
   # Import data
-  data <- import_amr_data(file_path, file_type, mapping = mapping, domain = domain, ...)
+  imported_data <- import_amr_data(file_path = file_path, data = data, 
+                                 file_type = file_type, mapping = mapping, 
+                                 domain = domain, ...)
   
   # Perform quality assessment
-  quality_assessment <- check_data_quality(data, domain = domain)
+  quality_assessment <- check_data_quality(imported_data, domain = domain)
   
   # Return both data and quality assessment
   return(list(
-    data = data,
+    data = imported_data,
     quality_assessment = quality_assessment
   ))
 }

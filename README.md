@@ -22,12 +22,12 @@ devtools::install_github("ChaokunHong0220/metero")
 
 ### 1. Data Standardization and Import
 
-Easily import and standardize AMR data from different sources:
+Easily import and standardize AMR data from different sources and formats:
 
 ```r
 library(metero)
 
-# Import data from a CSV file
+# Example 1: Import data from a CSV file
 my_mapping <- list(
   study_id = "Study_ID",
   pathogen = "Bacteria",
@@ -42,9 +42,33 @@ amr_data <- import_amr_data(
   domain = "human"
 )
 
+# Example 2: Directly use an existing data frame
+my_df <- data.frame(
+  Study_ID = c("Study1", "Study1", "Study2"),
+  Bacteria = c("E. coli", "S. aureus", "K. pneumoniae"),
+  Antibiotic = c("Ciprofloxacin", "Oxacillin", "Meropenem"),
+  Total = c(100, 50, 75),
+  Resistant = c(34, 22, 12)
+)
+
+amr_data <- import_amr_data(
+  data = my_df,
+  mapping = my_mapping,
+  domain = "human"
+)
+
 # Check data quality
 quality_report <- check_data_quality(amr_data)
 print(quality_report)
+
+# Alternative: Import and check quality in one step
+import_result <- import_local_data(
+  data = my_df,
+  mapping = my_mapping,
+  domain = "human"
+)
+amr_data <- import_result$data
+quality_report <- import_result$quality_assessment
 ```
 
 ### 2. AMR Data Analysis
